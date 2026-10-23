@@ -49,7 +49,7 @@ npm run mock-server    # mock service for the live-service example (port 8790)
 | Example | Shows |
 |---|---|
 | `/sensor-site/` | A drawn site with sensors, scenarios on the simulator, derived tiles, weather card, area banner |
-| `/well-pad/` | Overhead view of one well on private land: fenceline ESP32 emissions nodes, gate sensor, LoRa gateway, RRC and operator records, guided tour |
+| `/well-pad/` | Overhead view of one well on private land: fenceline ESP32 emissions nodes, gate sensor, ESP-NOW gateway, game-cam stills, RRC and operator records, guided tour |
 | `/release-matrix/` | Builds, deployments and test runs in a components × environments matrix |
 | `/live-service/?source=polling` (or `sse`, `webhook`, `simulator`) | The same dashboard fed by a real HTTP service, including test webhooks |
 

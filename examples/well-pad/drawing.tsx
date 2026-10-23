@@ -1,7 +1,7 @@
 // Well pad example — drawings. The overhead site plan that sits under the
 // schematic markers, and the illustrations shown in the detail drawer: a
-// cutaway of an emissions node, the gateway mast, and a side view of the
-// pumping unit. All plain SVG, coloured from CSS so they follow the theme.
+// cutaway of an emissions node and the gateway mast. The side view of the
+// pumping unit is in pumpjack.tsx. All plain SVG, coloured from CSS so they follow the theme.
 
 import { useDashboardState } from "../../src";
 import { GATEWAY, NODES } from "./site";
@@ -17,6 +17,13 @@ const age = (ts?: string) => (ts ? (Date.now() - new Date(ts).getTime()) / 1000 
 /** Strokes-per-minute → animation timing for the pumping unit */
 export const strokeStyle = (spm: number) =>
   ({ "--stroke": `${(60 / Math.max(spm, 0.5)).toFixed(2)}s`, "--play": spm > 0.5 ? "running" : "paused" }) as React.CSSProperties;
+
+/** Game cameras: position and the compass bearing they face */
+const CAMS = [
+  { id: "CAM-W1", x: 352, y: 196, facing: 120 },
+  { id: "CAM-T1", x: 660, y: 372, facing: 0 },
+  { id: "CAM-G1", x: 556, y: 438, facing: 185 },
+];
 
 const TREES: [number, number, number][] = [
   [80, 90, 16], [110, 120, 11], [60, 250, 14], [150, 300, 10], [860, 120, 15], [900, 160, 10], [930, 320, 13],
@@ -136,6 +143,15 @@ export function SitePlan() {
               style={{ opacity: 0.25 + plume * 0.6 }} className="wp-plume" />
       )}
 
+      {/* game cameras and their fields of view */}
+      {CAMS.map(c => (
+        <g key={c.id} transform={`translate(${c.x} ${c.y}) rotate(${c.facing})`} className="wp-cam">
+          <path d="M0,0 L-22,-70 A73,73 0 0 1 22,-70 Z" className="wp-cam-fov" />
+          <rect x="-5" y="-4" width="10" height="8" rx="1.5" className="wp-cam-body" />
+        </g>
+      ))}
+      {CAMS.map(c => <text key={c.id} x={c.x + 8} y={c.y + 12} className="wp-label tiny">{c.id}</text>)}
+
       {/* wind arrow + north arrow + scale */}
       <g transform="translate(905 75)">
         <circle r="34" className="wp-compass" />
@@ -158,7 +174,7 @@ export function SitePlan() {
 export function NodeDevice({ transmitting, solar = 4 }: { transmitting: boolean; solar?: number }) {
   return (
     <svg viewBox="0 0 420 300" className="wp-device" role="img"
-         aria-label="Cutaway of an emissions node: solar panel, ESP32 board, LoRa radio, batteries, gas sensors behind a vented port">
+         aria-label="Cutaway of an emissions node: solar panel, ESP32 board with external antenna, batteries, gas sensors behind a vented port">
       <rect x="0" y="0" width="420" height="300" className="wp-dev-bg" />
       {/* pole and solar panel */}
       <rect x="64" y="40" width="9" height="260" className="wp-dev-pole" />
@@ -175,14 +191,15 @@ export function NodeDevice({ transmitting, solar = 4 }: { transmitting: boolean;
       {/* enclosure, door cut away */}
       <rect x="104" y="108" width="236" height="148" rx="8" className="wp-dev-box" />
       <rect x="112" y="116" width="220" height="132" rx="4" className="wp-dev-inside" />
-      {/* PCB with ESP32-S3 module, LoRa radio, MPPT charger, status LED */}
+      {/* PCB with ESP32-S3 module (u.FL to the antenna), heater MOSFET, MPPT charger, status LED */}
       <rect x="120" y="124" width="132" height="84" rx="3" className="wp-dev-pcb" />
       <rect x="128" y="132" width="56" height="42" rx="2" className="wp-dev-can" />
       <path d="M131,137 h8 v-3 h8 v3 h8 v-3 h8 v3 h8" className="wp-dev-trace" />
       <text x="156" y="160" className="wp-dev-chip" textAnchor="middle">ESP32-S3</text>
       <rect x="192" y="132" width="52" height="24" rx="2" className="wp-dev-can" />
-      <text x="218" y="148" className="wp-dev-chip" textAnchor="middle">SX1262</text>
-      <path d="M244,140 C280,140 300,130 318,112" className="wp-dev-coax" />
+      <text x="218" y="148" className="wp-dev-chip" textAnchor="middle">HEATER FET</text>
+      <circle cx="180" cy="137" r="2.5" className="wp-dev-ufl" />
+      <path d="M180,137 C200,118 290,126 318,112" className="wp-dev-coax" />
       <rect x="192" y="164" width="52" height="22" rx="2" className="wp-dev-board2" />
       <text x="218" y="179" className="wp-dev-chip" textAnchor="middle">MPPT</text>
       <circle cx="136" cy="196" r="4" className={`wp-dev-led ${transmitting ? "on" : ""}`} />
@@ -210,7 +227,7 @@ export function NodeDevice({ transmitting, solar = 4 }: { transmitting: boolean;
       {/* callouts */}
       <g className="wp-dev-callouts">
         <text x="186" y="14">6 W solar panel</text>
-        <text x="330" y="16">LoRa antenna</text>
+        <text x="330" y="16">2.4 GHz antenna</text>
         <text x="352" y="166">ePTFE</text><text x="352" y="177">breathable</text><text x="352" y="188">vent</text>
         <path d="M146,240 L60,280" /><text x="12" y="292">CH₄ (MOx)</text>
         <path d="M190,240 L170,290" /><text x="146" y="298">H₂S cell</text>
@@ -225,7 +242,7 @@ export function NodeDevice({ transmitting, solar = 4 }: { transmitting: boolean;
 
 export function GatewayDevice({ transmitting }: { transmitting: boolean }) {
   return (
-    <svg viewBox="0 0 420 260" className="wp-device" role="img" aria-label="Gateway mast with omni antenna, weather sensors and a box holding a Raspberry Pi, LoRa board and LTE modem">
+    <svg viewBox="0 0 420 260" className="wp-device" role="img" aria-label="Gateway mast with omni antenna, weather sensors and a box holding a Raspberry Pi, an ESP32 ESP-NOW bridge and an LTE modem">
       <rect x="0" y="0" width="420" height="260" className="wp-dev-bg" />
       <rect x="96" y="30" width="8" height="230" className="wp-dev-pole" />
       <rect x="96" y="2" width="8" height="30" rx="4" className="wp-dev-omni" />
@@ -243,7 +260,7 @@ export function GatewayDevice({ transmitting }: { transmitting: boolean }) {
       <rect x="158" y="138" width="214" height="94" rx="4" className="wp-dev-inside" />
       <rect x="166" y="150" width="120" height="74" rx="4" className="wp-dev-pcb" />
       <rect x="172" y="146" width="108" height="26" rx="2" className="wp-dev-board2" />
-      <text x="226" y="163" className="wp-dev-chip" textAnchor="middle">LoRa HAT · SX1302</text>
+      <text x="226" y="163" className="wp-dev-chip" textAnchor="middle">ESP32 bridge · USB</text>
       <rect x="176" y="186" width="30" height="30" rx="2" className="wp-dev-can" />
       <text x="191" y="204" className="wp-dev-chip small" textAnchor="middle">SoC</text>
       <rect x="250" y="190" width="30" height="26" rx="1" className="wp-dev-can" />
@@ -255,55 +272,11 @@ export function GatewayDevice({ transmitting }: { transmitting: boolean }) {
       <rect x="298" y="198" width="64" height="28" rx="3" className="wp-dev-cellbat" />
       <text x="330" y="216" className="wp-dev-chip small" textAnchor="middle">UPS + 12 V</text>
       <g className="wp-dev-callouts">
-        <text x="118" y="14">5.8 dBi omni (LoRa)</text>
+        <text x="118" y="14">9 dBi omni (ESP-NOW)</text>
         <text x="196" y="44">anemometer</text>
         <text x="2" y="36">vane</text>
         <text x="4" y="100">temp / RH /</text><text x="4" y="111">pressure</text>
         <text x="362" y="112">LTE</text>
-      </g>
-    </svg>
-  );
-}
-
-// ---------- pumping unit, side view ----------
-
-export function PumpjackDiagram({ spm }: { spm: number }) {
-  return (
-    <svg viewBox="0 0 420 250" className="wp-device wp-unit" style={strokeStyle(spm)} role="img"
-         aria-label="Side view of a beam pumping unit lifting sucker rods from a pump far below ground">
-      <rect x="0" y="0" width="420" height="250" className="wp-dev-bg" />
-      <rect x="0" y="150" width="420" height="100" className="wp-dev-ground" />
-      <line x1="0" y1="150" x2="420" y2="150" className="wp-dev-wire" />
-      {/* wellbore */}
-      <rect x="72" y="150" width="16" height="100" className="wp-dev-hole" />
-      <line x1="80" y1="150" x2="80" y2="250" className="wp-dev-rodline" />
-      <text x="96" y="196" className="wp-dev-chip lft">casing &amp; tubing</text>
-      <text x="96" y="208" className="wp-dev-chip lft dim">sucker rods ↓ to pump</text>
-      <text x="96" y="238" className="wp-dev-chip lft">≈ 9,000 ft below</text>
-      {/* base, samson post, gearbox, motor */}
-      <rect x="60" y="140" width="290" height="10" className="wp-dev-can" />
-      <path d="M190,140 L210,62 L230,140" className="wp-dev-steel" />
-      <rect x="276" y="104" width="38" height="36" rx="3" className="wp-dev-board2" />
-      <rect x="324" y="116" width="26" height="22" rx="4" className="wp-dev-can" />
-      <text x="337" y="132" className="wp-dev-chip small" textAnchor="middle">M</text>
-      {/* crank + counterweight rotating about the gearbox */}
-      <g className="wp-crank"><line x1="295" y1="114" x2="295" y2="80" className="wp-dev-steel" /><rect x="282" y="72" width="26" height="14" rx="3" className="wp-dev-weight" /></g>
-      {/* walking beam, horsehead, bridle and polished rod (rocks about the samson post bearing) */}
-      <g className="wp-rock">
-        <rect x="74" y="58" width="226" height="8" className="wp-dev-steel-fill" />
-        <path d="M84,46 Q62,62 80,96 L92,96 Q78,62 96,46 Z" className="wp-dev-steel-fill" />
-        <line x1="290" y1="66" x2="295" y2="96" className="wp-dev-steel" />
-      </g>
-      <g className="wp-polish"><line x1="80" y1="96" x2="80" y2="146" className="wp-dev-polished" /></g>
-      <rect x="72" y="140" width="16" height="10" className="wp-dev-can" />
-      <circle cx="210" cy="62" r="4" className="wp-dev-can" />
-      <g className="wp-dev-callouts">
-        <text x="4" y="40">horsehead</text>
-        <text x="216" y="40">walking beam</text>
-        <text x="236" y="110">samson post</text>
-        <text x="300" y="66">counterweight</text>
-        <text x="4" y="128">polished rod</text>
-        <text x="286" y="160">gearbox · motor</text>
       </g>
     </svg>
   );

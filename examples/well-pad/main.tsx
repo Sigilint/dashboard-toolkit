@@ -3,7 +3,8 @@
 // sensor, four solar ESP32 emissions nodes on the fenceline, and a Raspberry
 // Pi gateway that relays them over LTE. Built to explain as much as to
 // monitor: a guided tour, a story behind each scenario, device cutaways and
-// plain-language notes in the drawer. All data is synthetic.
+// plain-language notes in the drawer, and game-cam stills. All data is
+// synthetic and the "photos" are illustrations.
 
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -17,7 +18,9 @@ import {
   categories, groups, entities, scenarios, LOOP_SECONDS, NODES, NODE_SENSORS, NODE_SPECS, GATEWAY_SPECS,
   WELL_INFO, OPERATOR, GLOSSARY, TOUR,
 } from "./site";
-import { SitePlan, NodeDevice, GatewayDevice, PumpjackDiagram, compass } from "./drawing";
+import { SitePlan, NodeDevice, GatewayDevice, compass } from "./drawing";
+import { PumpjackDiagram, pumpjackCss } from "./pumpjack";
+import { BenchPhoto, CamViewer, CAMERAS, photoCss } from "./photos";
 
 const source = createSimulator({
   entities, scenarios, loopSeconds: LOOP_SECONDS, warmup: 12,
@@ -77,6 +80,16 @@ const dashboard = createDashboard({
   },
 });
 
+// ?select=<id> opens that entity's drawer once it has loaded, e.g. ?select=WELL
+const preselect = new URLSearchParams(location.search).get("select");
+if (preselect) {
+  const off = dashboard.subscribe(() => {
+    if (!dashboard.getState().entityById.has(preselect)) return;
+    off();
+    queueMicrotask(() => dashboard.select(preselect));
+  });
+}
+
 // ---------- drawer pieces ----------
 
 const kindOf = (e: Entity) => (e.meta?.kind as string) || "";
@@ -133,8 +146,8 @@ function WhatItIs({ entity }: { entity: Entity }) {
 
 /** The path a reading takes, with one step highlighted */
 function DataPath({ at }: { at: number }) {
-  const steps = [["Sensor", "samples the air"], ["ESP32", "averages, corrects, packs"], ["LoRa radio", "915 MHz, up to ~2 km"],
-                 ["Pi gateway", "time-stamps & stores"], ["LTE uplink", "to the cloud"], ["Dashboard", "you are here"]];
+  const steps = [["Sensor", "samples the air"], ["ESP32", "averages, corrects, packs"], ["ESP-NOW", "2.4 GHz, long-range mode"],
+                 ["ESP32 bridge → Pi", "time-stamps & stores"], ["LTE uplink", "to the cloud"], ["Dashboard", "you are here"]];
   return (
     <ol className="wp-path">
       {steps.map(([t, sub], i) => <li key={t} className={i === at ? "on" : ""}><b>{t}</b><span>{sub}</span></li>)}
@@ -142,19 +155,60 @@ function DataPath({ at }: { at: number }) {
   );
 }
 
+/** Current draw over one reporting cycle, with a marker at where the node is now */
+function DutyCycle({ phase }: { phase: number }) {
+  const W = 400, H = 110, base = 92, x = (t: number) => 10 + (t / 300) * (W - 20), y = (mA: number) => base - (mA / 200) * 74;
+  const path = `M${x(0)},${y(0.008)} H${x(253)} V${y(60)} H${x(298)} V${y(45)} H${x(299.6)} V${y(190)} H${x(300)} V${y(0.008)}`;
+  const at = x(phase * 300);
+  const now = phase * 300 < 253 ? "deep sleep" : phase * 300 < 298 ? "heating sensors" : "sampling & sending";
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="wp-duty" role="img" aria-label={`Power over one cycle; now ${now}`}>
+      <line x1={x(0)} x2={x(300)} y1={base} y2={base} className="wp-duty-axis" />
+      <rect x={x(0)} y={y(4)} width={x(253) - x(0)} height={base - y(4)} className="wp-duty-sleep" />
+      <path d={path} className="wp-duty-line" />
+      <text x={x(120)} y={base - 10} textAnchor="middle">deep sleep · 8 µA · 253 s</text>
+      <text x={x(275)} y={y(60) - 6} textAnchor="middle">heaters 45 s</text>
+      <text x={x(300) - 2} y={y(190) + 4} textAnchor="end">ESP-NOW send ≈ 1 ms ▸</text>
+      <text x={x(0)} y={H - 4}>0 s</text><text x={x(300)} y={H - 4} textAnchor="end">300 s</text>
+      <line x1={at} x2={at} y1={8} y2={base} className="wp-duty-now" />
+      <text x={Math.min(at + 4, W - 80)} y={16} className="wp-duty-now-label">now: {now}</text>
+    </svg>
+  );
+}
+
 function NodeSections({ node }: { node: string }) {
   const d = useDashboard();
   const s = useDashboardState();
   const info = NODES.find(n => n.id === node)!;
+  const [view, setView] = useState<"photo" | "cutaway">("photo");
+  const [tags, setTags] = useState(true);
   const last = s.latest[node];
   const tx = age(last?.ts) < 1.2;
   return (
     <>
       <DrawerSection title="The device" aside={info.serial}>
-        <NodeDevice transmitting={tx} solar={s.latest[`${node}-SOL`]?.value ?? 4} />
+        <div className="wp-tabs" role="tablist">
+          {(["photo", "cutaway"] as const).map(v => (
+            <button key={v} role="tab" aria-selected={view === v} className={`dt-btn small ${view === v ? "on" : ""}`} onClick={() => setView(v)}>
+              {v === "photo" ? "Bench photo" : "Inside the housing"}
+            </button>
+          ))}
+          {view === "photo" && <label className="dt-toggle mini"><input type="checkbox" checked={tags} onChange={e => setTags(e.target.checked)} /> labels</label>}
+        </div>
+        {view === "photo" ? <BenchPhoto labels={tags} /> : <NodeDevice transmitting={tx} solar={s.latest[`${node}-SOL`]?.value ?? 4} />}
         <p className="wp-caption">
-          A weatherproof box on the fence. The ESP32 sleeps most of the time, then wakes every 5 minutes, warms the gas sensors,
-          takes readings and radios them to the gateway. The TX light flashes on each send.
+          {view === "photo"
+            ? "The parts of one node laid out before assembly (illustration): an ESP32-S3 board with an external-antenna connector, four sensor boards, the solar charger, two LiFePO₄ cells and the breathable vent plug."
+            : "Assembled in a weatherproof box on the fence. The gas sensors look down through a membrane under the sun shield, and the vent lets the box breathe without letting rain in. The TX light flashes on each send."}
+        </p>
+      </DrawerSection>
+      <DrawerSection title="Sleep, wake, send" aside="one 5-minute cycle">
+        <DutyCycle phase={(age(last?.ts) % 6) / 6} />
+        <p className="wp-caption">
+          The ESP32 spends most of each cycle in deep sleep, drawing about 8 µA. It wakes on a timer, heats the gas sensors for
+          45 s and samples them. Then it sends one ESP-NOW packet: there's no Wi-Fi network to join, so the radio is on for
+          about a millisecond. The gateway acknowledges and the ESP32 goes straight back to sleep. The heater, not the
+          radio, uses most of the battery.
         </p>
       </DrawerSection>
       <DrawerSection title="Sensors on this node" aside={`${NODE_SENSORS.length}`}>
@@ -190,6 +244,21 @@ function NodeSections({ node }: { node: string }) {
   );
 }
 
+function TankSections() {
+  return (
+    <>
+      <DrawerSection title="Tank battery camera" aside={CAMERAS.tanks.id}><CamViewer camera={CAMERAS.tanks} /></DrawerSection>
+      <DrawerSection title="Tank levels">
+        <ChannelList ids={["TANK-1", "TANK-2", "TANK-W"]} />
+        <p className="wp-caption">
+          Oil, water and gas leave the well together. The separator splits them: oil goes to the steel tanks, salty
+          produced water to the fibreglass tank, and gas to the sales line. A dirt berm around the tanks holds a spill.
+        </p>
+      </DrawerSection>
+    </>
+  );
+}
+
 function WellSections({ entity }: { entity: Entity }) {
   const s = useDashboardState();
   const p = WELL_INFO.production;
@@ -199,11 +268,14 @@ function WellSections({ entity }: { entity: Entity }) {
       <DrawerSection title="How a pumping unit works">
         <PumpjackDiagram spm={s.latest.WELL?.value ?? 8.4} />
         <p className="wp-caption">
-          The motor turns the gearbox and cranks, and the counterweights balance the weight of the rods. The walking beam rocks
-          on the samson post, and the horsehead pulls the polished rod up and lets it fall. The rod string reaches a plunger pump
-          near the bottom of the well, which lifts a mix of oil, water and gas to the surface on each upstroke.
+          This is the "nodding donkey" you see from the highway. The electric motor drives a gearbox that turns the crank and
+          its heavy counterweights. The pitman arms pull down the back of the walking beam, so it rocks on the samson post and
+          the curved horsehead lifts the polished rod straight up out of the wellhead. Underground, that rod is the top of a
+          string of steel sucker rods about 9,000 ft long. They work a plunger pump at the bottom, which lifts oil, water and
+          gas up the tubing on every upstroke.
         </p>
       </DrawerSection>
+      <DrawerSection title="Well camera" aside={CAMERAS.well.id}><CamViewer camera={CAMERAS.well} /></DrawerSection>
       <DrawerSection title="Live from the operator's controller">
         <ChannelList ids={["WELL", "WELL-FILL", "WELL-AMP", "WELL-TP", "WELL-CP", "TANK-1", "TANK-2", "TANK-W"]} />
       </DrawerSection>
@@ -253,8 +325,9 @@ function GatewaySections() {
       <DrawerSection title="The gateway">
         <GatewayDevice transmitting={tx} />
         <p className="wp-caption">
-          The mast at the barn holds the LoRa antenna and the weather sensors. In the box, a Raspberry Pi runs the packet
-          forwarder, keeps a local copy of every reading, and pushes data out through the LTE modem.
+          The mast at the barn holds the 2.4 GHz antenna and the weather sensors. In the box, an ESP32 bridge receives the
+          nodes' ESP-NOW packets and passes them to a Raspberry Pi. The Pi keeps a local copy of every reading and pushes
+          the data out through the LTE modem.
         </p>
       </DrawerSection>
       <DrawerSection title="How a reading gets here"><DataPath at={3} /></DrawerSection>
@@ -270,12 +343,15 @@ function GateSections() {
   const h = d.historyFor("GATE");
   const openings = h.filter((r, i) => r.value === 1 && h[i - 1]?.value === 0).slice(-6).reverse();
   return (
+    <>
+    <DrawerSection title="Gate camera" aside={CAMERAS.gate.id}><CamViewer camera={CAMERAS.gate} /></DrawerSection>
     <DrawerSection title="Recent openings" aside={`${openings.length}`}>
       {openings.length ? (
         <ul className="wp-insights mono">{openings.map(r => <li key={r.seq}>{formatTime(r.ts)} · opened</li>)}</ul>
       ) : <p className="wp-caption">No openings in the recent window.</p>}
       <p className="wp-caption">Expected: the contract pumper, once a day. {s.latest.GATE?.value === 1 ? "The gate is open now." : ""}</p>
     </DrawerSection>
+    </>
   );
 }
 
@@ -296,7 +372,7 @@ function Extra({ entity }: DrawerContext) {
           </DrawerSection>
         </>
       )}
-      {kind === "well" && <WellSections entity={entity} />}
+      {kind === "well" && (entity.group === "BAT" ? <TankSections /> : <WellSections entity={entity} />)}
       {kind === "gateway" && <GatewaySections />}
       {kind === "gate" && <GateSections />}
       {kind === "weather" && (
@@ -422,14 +498,8 @@ const css = `
 
   .wp-unit .wp-beam { animation: wp-bob var(--stroke) ease-in-out infinite alternate; animation-play-state: var(--play); }
   .wp-unit .wp-cranks { animation: wp-sweep var(--stroke) ease-in-out infinite alternate; animation-play-state: var(--play); }
-  .wp-unit .wp-rock { transform-box: view-box; transform-origin: 210px 62px; animation: wp-rock calc(var(--stroke) / 2) ease-in-out infinite alternate; animation-play-state: var(--play); }
-  .wp-unit .wp-polish { animation: wp-polish calc(var(--stroke) / 2) ease-in-out infinite alternate; animation-play-state: var(--play); }
-  .wp-unit .wp-crank { transform-box: view-box; transform-origin: 295px 114px; animation: wp-turn var(--stroke) linear infinite; animation-play-state: var(--play); }
   @keyframes wp-bob { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
   @keyframes wp-sweep { from { transform: translateX(-8px); } to { transform: translateX(8px); } }
-  @keyframes wp-rock { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
-  @keyframes wp-polish { from { transform: translateY(18px); } to { transform: translateY(-18px); } }
-  @keyframes wp-turn { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .wp-unit * { animation: none !important; } }
 
   .wp-device { width: 100%; height: auto; display: block; border: 1px solid var(--dt-rule); }
@@ -454,6 +524,16 @@ const css = `
   .wp-dev-chip { font: 600 8px var(--dt-mono); fill: #f4f6f6; }
   .wp-dev-chip.small { font-size: 7px; }
   .wp-dev-chip.lft { fill: var(--dt-ink-2); font-weight: 500; } .wp-dev-chip.dim { fill: var(--dt-ink-3); }
+  .wp-dev-ufl { fill: #d2ad4a; }
+  .wp-cam-fov { fill: var(--dt-ink); opacity: 0.07; }
+  .wp-cam-body { fill: #6b5a3a; stroke: var(--dt-ink-2); stroke-width: 0.8; }
+  .wp-duty { width: 100%; height: auto; display: block; border: 1px solid var(--dt-rule); background: var(--dt-stage); }
+  .wp-duty text { font: 500 8.5px var(--dt-mono); fill: var(--dt-ink-2); }
+  .wp-duty-axis { stroke: var(--dt-rule); }
+  .wp-duty-sleep { fill: var(--dt-accent-soft); }
+  .wp-duty-line { stroke: var(--dt-accent); stroke-width: 1.5; fill: none; }
+  .wp-duty-now { stroke: var(--dt-ink); stroke-dasharray: 2 2; }
+  .wp-duty .wp-duty-now-label { fill: var(--dt-ink); font-weight: 600; }
   .wp-dev-coax { stroke: #444; stroke-width: 1.4; fill: none; }
   .wp-dev-led { fill: #3d4a3d; } .wp-dev-led.on { fill: #6dff8a; }
   .wp-dev-cellbat { fill: #3b6fb0; stroke: #23466f; }
@@ -506,7 +586,7 @@ const css = `
 
 createRoot(document.getElementById("root")!).render(
   <DashboardProvider dashboard={dashboard} storageKey="well-pad">
-    <style>{css}</style>
+    <style>{css + pumpjackCss + photoCss}</style>
     <DashboardApp
       main={focus => (
         <Schematic viewBox={[0, 0, 1000, 640]} background={<SitePlan />} focus={focus}>
