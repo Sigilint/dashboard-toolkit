@@ -137,7 +137,17 @@ button.
 | `relatedLabel` | `(groupLabel) => string` |
 
 `DrawerSection({ title, aside?, children })` gives custom sections the same
-look. `Sparkline({ data, entity?, height? })` works anywhere.
+look.
+
+**Devices with several sensors.** An entity carries one value, so model a
+device as one entity per channel and give them all the device's `group`.
+Put the marker (a `position`) on the headline channel, and tag every
+channel with `meta: { kind, node }`. Then switch on `meta.kind` inside
+`extra` to draw a device panel: an illustration, a list of every channel
+with its live value, and the hardware specs. The well-pad example does
+this for its ESP32 emissions nodes. It also hides `about` and `related`
+and renders them inside `extra`, so that a node's device picture comes
+before its description. `Sparkline({ data, entity?, height? })` works anywhere.
 
 ## Event stream
 

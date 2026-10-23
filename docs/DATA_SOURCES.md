@@ -84,6 +84,9 @@ createSimulator({
   - `clock()` returns `{ t, loopT, loopSeconds, speed, active }`
 - **`events(ctx)`** gets `t`, `loopT`, a seeded `random()` and `emit()`.
   The release-matrix example uses it to generate builds and deployments.
+- **`severityOf`** replaces limit evaluation for chosen entities. The
+  well-pad example uses it so a stopped pumping unit is a warning, never an
+  alarm, because a pause is usually the pump-off controller doing its job.
 
 ## REST polling
 
