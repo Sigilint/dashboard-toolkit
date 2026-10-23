@@ -20,6 +20,7 @@ export default defineConfig({
         sensor: resolve(__dirname, "examples/sensor-site/index.html"),
         release: resolve(__dirname, "examples/release-matrix/index.html"),
         live: resolve(__dirname, "examples/live-service/index.html"),
+        wellpad: resolve(__dirname, "examples/well-pad/index.html"),
       },
     },
   },
