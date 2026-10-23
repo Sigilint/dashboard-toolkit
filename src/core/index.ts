@@ -12,3 +12,4 @@ export * from "./sources/rest";
 export * from "./sources/push";
 export * from "./sources/simulator";
 export * from "./sources/mappers";
+export * from "./sources/factory";
