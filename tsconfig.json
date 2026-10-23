@@ -15,7 +15,9 @@
     "useDefineForClassFields": false,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "types": [],
+    "types": [
+      "node"
+    ],
     "jsx": "react-jsx",
     "noUncheckedIndexedAccess": false
   },
