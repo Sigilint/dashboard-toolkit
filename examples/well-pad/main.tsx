@@ -477,14 +477,14 @@ const css = `
   .wp-plan .wp-gate { stroke: var(--dt-ink); stroke-width: 3; transition: transform 0.6s; transform-origin: 0 0; }
   .wp-plan .wp-gate.open { transform: rotate(-80deg); stroke: var(--dt-warn); }
   .wp-plan .wp-flowline { stroke: var(--dt-ink-3); stroke-width: 1.6; stroke-dasharray: 5 3; fill: none; }
-  .wp-plan .wp-slab { fill: var(--dt-panel-2); stroke: var(--dt-ink-3); stroke-width: 0.8; }
-  .wp-plan .wp-equip, .wp-plan .wp-tank { fill: var(--dt-panel); stroke: var(--dt-ink-2); stroke-width: 1.2; }
-  .wp-plan .wp-tank-fill { fill: var(--dt-accent-soft); stroke: var(--dt-accent); stroke-width: 0.6; }
+  .wp-plan .wp-equip { fill: var(--dt-panel); stroke: var(--dt-ink-2); stroke-width: 1.2; }
+  .wp-plan .wp-shadow { fill: var(--dt-ink); opacity: 0.12; }
+  .wp-plan .wp-tank { fill: var(--dt-panel); }
+  .wp-plan .wp-tank-fill { fill: var(--dt-accent-soft); }
+  .wp-plan .wp-tank-surface { fill: none; stroke: var(--dt-accent); stroke-width: 0.8; }
+  .wp-plan .wp-tank-shell { fill: none; stroke: var(--dt-ink-2); stroke-width: 1.2; }
+  .wp-plan .wp-tank-top { fill: var(--dt-panel-2); fill-opacity: 0.35; stroke: var(--dt-ink-2); stroke-width: 1.2; }
   .wp-plan .wp-berm { fill: none; stroke: var(--dt-ink-3); stroke-width: 4; opacity: 0.45; }
-  .wp-plan .wp-steel { fill: var(--wp-steel); }
-  .wp-plan .wp-steel-line { stroke: var(--wp-steel); stroke-width: 2.5; fill: none; }
-  .wp-plan .wp-weight { fill: var(--dt-ink-2); }
-  .wp-plan .wp-rod { fill: var(--dt-ink); }
   .wp-plan .wp-link { stroke: var(--dt-accent); stroke-width: 0.8; stroke-dasharray: 2 4; opacity: 0.35; transition: opacity 0.4s; }
   .wp-plan .wp-link.tx { opacity: 1; stroke-width: 1.4; }
   .wp-plan .wp-link.down { stroke: var(--dt-alarm); opacity: 0.6; stroke-dasharray: 1 6; }
@@ -496,11 +496,7 @@ const css = `
   .wp-plan .wp-label { font: 500 8.5px var(--dt-mono); fill: var(--dt-ink-3); letter-spacing: 0.05em; }
   .wp-plan .wp-label.dim { opacity: 0.7; } .wp-plan .wp-label.tiny { font-size: 7px; } .wp-plan .wp-label.mid { fill: var(--dt-ink-2); }
 
-  .wp-unit .wp-beam { animation: wp-bob var(--stroke) ease-in-out infinite alternate; animation-play-state: var(--play); }
-  .wp-unit .wp-cranks { animation: wp-sweep var(--stroke) ease-in-out infinite alternate; animation-play-state: var(--play); }
-  @keyframes wp-bob { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
-  @keyframes wp-sweep { from { transform: translateX(-8px); } to { transform: translateX(8px); } }
-  @media (prefers-reduced-motion: reduce) { .wp-unit * { animation: none !important; } }
+  :root[data-theme="dark"] .wp-unit { filter: brightness(1.5); }
 
   .wp-device { width: 100%; height: auto; display: block; border: 1px solid var(--dt-rule); }
   .wp-dev-bg { fill: var(--dt-stage); }

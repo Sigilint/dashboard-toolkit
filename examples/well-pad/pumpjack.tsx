@@ -5,7 +5,7 @@
 // moves straight up and down over the wellhead.
 //
 // PumpjackArt draws the machine only, in a 640-wide space with the ground
-// at y = 300, so the game-cam scenes can reuse it with their own sky.
+// at y = 300, so the game-cam scenes and the site plan can reuse it.
 
 import { useEffect, useRef, useState } from "react";
 
@@ -177,10 +177,9 @@ function Backdrop() {
   );
 }
 
-/** Animated, labelled side view for the well drawer. Turns at the live strokes per minute. */
-export function PumpjackDiagram({ spm }: { spm: number }) {
-  const [theta, setTheta] = useState(0.9);
-  const [labels, setLabels] = useState(true);
+/** Crank angle that turns at the live strokes per minute (held still under reduced motion) */
+export function useCrank(spm: number, start = 0.9) {
+  const [theta, setTheta] = useState(start);
   const spmRef = useRef(spm);
   spmRef.current = spm;
   useEffect(() => {
@@ -195,6 +194,13 @@ export function PumpjackDiagram({ spm }: { spm: number }) {
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, []);
+  return theta;
+}
+
+/** Animated, labelled side view for the well drawer. Turns at the live strokes per minute. */
+export function PumpjackDiagram({ spm }: { spm: number }) {
+  const theta = useCrank(spm);
+  const [labels, setLabels] = useState(true);
   return (
     <div className="pj-wrap">
       <svg viewBox="0 0 640 430" className="wp-device" role="img"

@@ -1,9 +1,12 @@
 // Well pad example — drawings. The overhead site plan that sits under the
 // schematic markers, and the illustrations shown in the detail drawer: a
 // cutaway of an emissions node and the gateway mast. The side view of the
-// pumping unit is in pumpjack.tsx. All plain SVG, coloured from CSS so they follow the theme.
+// pumping unit is in pumpjack.tsx; the plan stands a small copy of it on the
+// pad, and draws the tanks in three-quarter view, so both read at a glance.
+// All plain SVG, coloured from CSS so they follow the theme.
 
 import { useDashboardState } from "../../src";
+import { PumpjackArt, useCrank } from "./pumpjack";
 import { GATEWAY, NODES } from "./site";
 
 // ---------- helpers ----------
@@ -14,9 +17,37 @@ export const compass = (deg: number) => POINTS[Math.round((((deg % 360) + 360) %
 /** Seconds since an entity's last record arrived (simulator time tracks the wall clock) */
 const age = (ts?: string) => (ts ? (Date.now() - new Date(ts).getTime()) / 1000 : Infinity);
 
-/** Strokes-per-minute → animation timing for the pumping unit */
-export const strokeStyle = (spm: number) =>
-  ({ "--stroke": `${(60 / Math.max(spm, 0.5)).toFixed(2)}s`, "--play": spm > 0.5 ? "running" : "paused" }) as React.CSSProperties;
+/** The side-view pumping unit, scaled to stand with its wellhead on the plan's ground point.
+ *  Its own component so the crank animation re-renders only the unit, not the whole plan. */
+const UNIT_SCALE = 0.28;
+function PlanPumpjack({ spm, x, y }: { spm: number; x: number; y: number }) {
+  const theta = useCrank(spm);
+  return (
+    <g transform={`translate(${x - 110 * UNIT_SCALE} ${y - 300 * UNIT_SCALE}) scale(${UNIT_SCALE})`}>
+      <PumpjackArt theta={theta} />
+    </g>
+  );
+}
+
+/** Upright tank in three-quarter view: shell, the liquid inside up to its level, then the outline over both */
+function Tank({ x, y, level, label }: { x: number; y: number; level: number; label: string }) {
+  const rx = 20, ry = 6, h = 32;
+  const top = y - h / 2, bot = y + h / 2;
+  const fy = bot - Math.max(1.5, Math.min(1, level / 20) * h);
+  const side = `M${x - rx},${top} V${bot} A${rx},${ry} 0 0 0 ${x + rx},${bot} V${top}`;
+  return (
+    <g>
+      <ellipse cx={x} cy={bot + 2} rx={rx + 3} ry={ry + 1} className="wp-shadow" />
+      <path d={`${side} A${rx},${ry} 0 0 0 ${x - rx},${top} Z`} className="wp-tank" />
+      <path d={`M${x - rx},${fy} V${bot} A${rx},${ry} 0 0 0 ${x + rx},${bot} V${fy} A${rx},${ry} 0 0 0 ${x - rx},${fy} Z`} className="wp-tank-fill" />
+      <path d={`M${x - rx},${fy} A${rx},${ry} 0 0 0 ${x + rx},${fy}`} className="wp-tank-surface" />
+      <path d={side} className="wp-tank-shell" />
+      <ellipse cx={x} cy={top} rx={rx} ry={ry} className="wp-tank-top" />
+      <path d={`M${x + 6},${top - 2} v-4 h5`} className="wp-thin" />
+      <text x={x} y={bot + ry + 11} className="wp-label tiny" textAnchor="middle">{label} · {level.toFixed(1)} ft</text>
+    </g>
+  );
+}
 
 /** Game cameras: position and the compass bearing they face */
 const CAMS = [
@@ -40,7 +71,7 @@ export function SitePlan() {
   const from = v("WX-DIR", 185), heading = (from + 180) % 360;
   const excess = Math.max(...NODES.map(n => v(n.id, 2) - 2));
   const plume = Math.max(0, Math.min(1, (excess - 1.5) / 20));
-  const wellhead = { x: 432, y: 252 };
+  const wellhead = { x: 432, y: 262 };
 
   return (
     <g className="wp-plan">
@@ -101,37 +132,21 @@ export function SitePlan() {
       <circle cx="575" cy="300" r="5" className="wp-pole" />
       <rect x="569" y="308" width="12" height="9" className="wp-equip" />
       <path d="M575,300 L560,268 M575,317 L575,430 L574,588" className="wp-power" />
-      <path d="M432,252 C470,320 560,330 650,262" className="wp-flowline" />
+      <path d="M452,262 C480,320 560,330 650,262" className="wp-flowline" />
       <text x="470" y="330" className="wp-label dim">FLOWLINE</text>
 
-      {/* pumping unit, seen from above: horsehead over the wellhead, beam, samson post, gearbox, motor */}
-      <g style={strokeStyle(spm)} className="wp-unit">
-        <rect x="420" y="236" width="150" height="32" rx="2" className="wp-slab" />
-        <circle cx={wellhead.x} cy={wellhead.y} r="9" className="wp-equip" />
-        <circle cx={wellhead.x} cy={wellhead.y} r="3" className="wp-rod" />
-        <g className="wp-beam"><rect x="436" y="247" width="92" height="10" className="wp-steel" /><path d="M436,245 Q426,252 436,259" className="wp-steel-line" /></g>
-        <path d="M478,238 L485,252 L478,266 M492,238 L485,252 L492,266" className="wp-steel-line" />
-        <rect x="520" y="242" width="20" height="20" className="wp-equip" />
-        <g className="wp-cranks"><rect x="515" y="236" width="10" height="5" className="wp-weight" /><rect x="515" y="263" width="10" height="5" className="wp-weight" /></g>
-        <rect x="546" y="246" width="18" height="12" rx="3" className="wp-equip" />
-        <path d="M540,252 H546" className="wp-thin" />
-      </g>
+      {/* pumping unit, stood up side-on so it reads as a pumpjack: horsehead over the wellhead, motor to the east */}
+      <ellipse cx="492" cy="263" rx="88" ry="6" className="wp-shadow" />
+      <g className="wp-unit"><PlanPumpjack spm={spm} x={wellhead.x} y={wellhead.y} /></g>
       <text x="420" y="285" className="wp-label">WELL No. 2 · PUMPING UNIT</text>
 
       {/* tank battery: berm, separator/heater-treater, two oil tanks, water tank, load line */}
       <rect x="600" y="150" width="120" height="180" rx="6" className="wp-berm" />
       <circle cx="650" cy="262" r="12" className="wp-equip" />
       <text x="650" y="265" className="wp-label tiny" textAnchor="middle">SEP</text>
-      {[[636, 186, "T1", "TANK-1"], [690, 186, "T2", "TANK-2"], [690, 240, "WTR", "TANK-W"]].map(([x, y, label, id]) => {
-        const lvl = v(id as string, 0);
-        return (
-          <g key={id as string}>
-            <circle cx={x as number} cy={y as number} r="22" className="wp-tank" />
-            <circle cx={x as number} cy={y as number} r={Math.max(2, (lvl / 20) * 22)} className="wp-tank-fill" />
-            <text x={x as number} y={(y as number) + 34} className="wp-label tiny" textAnchor="middle">{label} · {lvl.toFixed(1)} ft</text>
-          </g>
-        );
-      })}
+      {([[636, 182, "T1", "TANK-1"], [690, 182, "T2", "TANK-2"], [690, 240, "WTR", "TANK-W"]] as const).map(([x, y, label, id]) => (
+        <Tank key={id} x={x} y={y} level={v(id, 0)} label={label} />
+      ))}
       <path d="M650,274 V310 M640,310 H700" className="wp-flowline" />
       <text x="606" y="324" className="wp-label tiny">TRUCK LOAD-OUT</text>
       <text x="606" y="144" className="wp-label">TANK BATTERY</text>

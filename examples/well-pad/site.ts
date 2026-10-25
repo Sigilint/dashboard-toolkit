@@ -29,7 +29,7 @@ export const GATEWAY = { x: 205, y: 432 };
 const box = (x: number, y: number, r = 22): [number, number, number, number] => [x - r, y - r, 2 * r, 2 * r];
 
 export const groups: Group[] = [
-  { key: "WELL", label: "Well & pumping unit", description: "Hargrove Ranch No. 2: a rod-pumped oil well, watched by the operator's pump-off controller", rect: [395, 215, 185, 75] },
+  { key: "WELL", label: "Well & pumping unit", description: "Hargrove Ranch No. 2: a rod-pumped oil well, watched by the operator's pump-off controller", rect: [395, 182, 190, 106] },
   { key: "BAT", label: "Tank battery", description: "Separator, oil and water tanks inside a dirt berm. Trucks haul from here", rect: [598, 148, 124, 184] },
   { key: "GATE", label: "Gate & fence", description: "Pipe-rail gate on the lease road with a magnetic gate sensor", rect: [482, 430, 92, 40] },
   ...NODES.map(n => ({ key: n.id, label: `Node ${n.id} (${n.side})`, description: `Landowner's solar emissions node on the ${n.side} fenceline`, rect: box(n.x, n.y) })),
@@ -164,7 +164,7 @@ export const entities: SimEntity[] = [
   well("WELL-TP", "Tubing pressure", "TP", "Tubing pressure", "psi", 0, { hi: [250, 400] }, { base: 85, noise: 3 }),
   well("WELL-CP", "Casing pressure", "CP", "Casing pressure", "psi", 0, { hi: [300, 450] }, { base: 140, noise: 2 }),
   e("TANK-1", "Oil tank 1 level", "TANK", "Oil tank · radar gauge", "production", "BAT", "ft", 2, { hi: [17, 19] }, { base: 9.2, noise: 0.01, period: 6 },
-    { position: { x: 636, y: 186 }, tags: { source: "operator POC (shared)" }, meta: { kind: "well" } }),
+    { position: { x: 636, y: 182 }, tags: { source: "operator POC (shared)" }, meta: { kind: "well" } }),
   e("TANK-2", "Oil tank 2 level", "TANK", "Oil tank · radar gauge", "production", "BAT", "ft", 2, { hi: [17, 19] }, { base: 3.4, noise: 0.01, period: 6 },
     { tags: { source: "operator POC (shared)" }, meta: { kind: "well" } }),
   e("TANK-W", "Water tank level", "TANK", "Produced water tank · radar gauge", "production", "BAT", "ft", 2, { hi: [17, 19] }, { base: 6.1, noise: 0.01, period: 6 },
