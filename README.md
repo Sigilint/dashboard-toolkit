@@ -102,3 +102,7 @@ React components have been checked in headless Chrome through the three
 examples but have no component tests yet. The package ships as TypeScript
 source, so consuming apps compile it with their own bundler; there's no
 prebuilt library bundle yet.
+
+## Deployment
+
+Live at **https://toolkit.sigilint.com**, also served at `https://sigilint-dashboard-toolkit.netlify.app`. It is the Netlify site `sigilint-dashboard-toolkit`, which deploys automatically on every push to `main` of `Sigilint/dashboard-toolkit`. Build settings are in `netlify.toml`: `npm ci && npm run build` on Node 24, publishing `dist/examples`. The live-service example needs the mock server, so it shows no data there. See `DEPLOYMENT.md` in `Sigilint/sigilint-web` for how all the Sigilint sites are hosted.
