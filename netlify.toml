@@ -1,0 +1,8 @@
+# Builds the Vite examples (see vite.config.ts). The live-service example needs
+# `npm run mock-server`, which isn't available here, so it only shows its offline state.
+[build]
+  command = "npm ci && npm run build"
+  publish = "dist/examples"
+
+[build.environment]
+  NODE_VERSION = "24"
